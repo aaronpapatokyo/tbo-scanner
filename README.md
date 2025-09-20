@@ -41,4 +41,18 @@ Use TradingView with the same symbol/timeframe and compare signals visually. If 
 - PR 4: Deploy to Vercel + Vercel Cron + expansion to more pairs
 
 ## Attribution
-- TBO Pine Script © thebettertraders by kaio (https://github.com/kaiomp) under the Mozilla Public License 2.0. This repository includes a TypeScript port of the indicator logic with attribution per MPL 2.0 requirements.
+- TBO Pine Script © thebettertraders by kaio (https://github.com/kaiomp) under the Mozilla Public License 2.0. This repository includes a TypeScript port of the indicator logic with attribution per MPL 2.0 
+
+## Inspect a specific bar (new)
+Use `--at=YYYY-MM-DD` (UTC) and the CLI will fetch a warmup window and print the signals for that exact bar.
+
+Examples:
+```bash
+# BTC/USDT daily — 2025-09-16 (with 400 warmup bars)
+npm run tbo -- --symbol=BTC/USDT --timeframe=1d --at=2025-09-16 --warmup=400
+
+# ETH/USDT daily — 2023-11-21 (default warmup 400)
+npm run tbo -- --symbol=ETH/USDT --timeframe=1d --at=2023-11-21
+```
+
+Tip: Set TradingView’s timezone to UTC and ensure you’re on Binance spot (BTCUSDT) to match candles.
