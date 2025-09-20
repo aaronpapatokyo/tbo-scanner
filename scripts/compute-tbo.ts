@@ -67,7 +67,7 @@ async function main() {
   const tfMs = timeframeToMs(timeframe);
 
   const ex = new (ccxt as any).binance({ enableRateLimit: true, timeout: 30000 });
-  if (verbose) (ex as any).verbose = true; // ccxt debug logging to stderr
+  if (verbose) (ex as any).verbose = false; // set to true for ccxt wire logs
   await ex.loadMarkets();
   if (!ex.markets[symbol]) {
     console.error(`Symbol ${symbol} not found on Binance. Example: BTC/USDT`);
@@ -97,7 +97,7 @@ async function main() {
   const t0 = Date.now();
   const ohlcv = await ex.fetchOHLCV(symbol, timeframe, effectiveSince, effectiveLimit);
   const t1 = Date.now();
-  if (verbose) console.error(`Fetched ${ohlcv.length} candles in ${(t1 - t0)}ms`);
+  if (verbose) console.error(`Fetched ${ohlcv.length} candles in ${t1 - t0}ms`);
 
   if (ohlcv.length === 0) {
     console.error("No candles returned. Try adjusting --since earlier or increasing --limit.");
@@ -109,14 +109,12 @@ async function main() {
   const h: number[] = [];
   const l: number[] = [];
   const c: number[] = [];
-  const v: number[] = [];
   for (const row of ohlcv) {
     t.push(row[0]);
     o.push(row[1]);
     h.push(row[2]);
     l.push(row[3]);
     c.push(row[4]);
-    v.push(row[5]);
   }
 
   const { series } = computeTBO(o, h, l, c, { speed });
@@ -131,7 +129,8 @@ async function main() {
       idx = exactIdx;
       barTs = t[idx];
     } else {
-      const floorIdx = t.findIndex(ms => ms > targetTs) - 1;
+      const nextIdx = t.findIndex(ms => ms > targetTs);
+      const floorIdx = nextIdx === -1 ? t.length - 1 : nextIdx - 1;
       if (floorIdx >= 0) {
         idx = floorIdx;
         barTs = t[idx];
