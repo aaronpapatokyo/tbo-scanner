@@ -59,7 +59,7 @@ async function main() {
   const { symbol, timeframe, since, limit, speed, chunkSize, verbose } = parseArgs();
   const tfMs = timeframeToMs(timeframe);
 
-  console.log(`Starting TBO ingestion for ${symbol} ${timeframe} (speed: ${speed})`);
+  console.log(`Starting TBO ingestion for ${symbol} ${timeframe} (speed: ${speed!})`);
 
   // Initialize Binance exchange
   const ex = new (ccxt as any).binance({ enableRateLimit: true, timeout: 30000 });
@@ -78,7 +78,7 @@ async function main() {
   // If no since provided, check database for latest timestamp
   if (!effectiveSince) {
     try {
-      const latestTs = await getLatestTimestamp(symbol, timeframe, speed);
+      const latestTs = await getLatestTimestamp(symbol, timeframe, speed!);
       if (latestTs) {
         effectiveSince = latestTs.getTime() + tfMs; // Start from next candle
         console.log(`Found existing data. Starting from ${new Date(effectiveSince).toISOString()}`);
@@ -135,7 +135,7 @@ async function main() {
 
     // Compute TBO indicators
     console.log('Computing TBO indicators...');
-    const { series } = computeTBO(opens, highs, lows, closes, { speed });
+    const { series } = computeTBO(opens, highs, lows, closes, { speed: speed! });
 
     // Prepare rows for database insertion
     const rows: TBOBarRow[] = [];
@@ -145,7 +145,7 @@ async function main() {
         symbol,
         timeframe,
         ts: new Date(timestamps[i]).toISOString(),
-        speed,
+        speed: speed!,
         open: opens[i],
         high: highs[i],
         low: lows[i],
@@ -197,7 +197,7 @@ async function main() {
     console.log(`✅ Ingestion completed:`);
     console.log(`   Symbol: ${symbol}`);
     console.log(`   Timeframe: ${timeframe}`);
-    console.log(`   Speed: ${speed}`);
+    console.log(`   Speed: ${speed!}`);
     console.log(`   Processed: ${totalProcessed} bars`);
     console.log(`   Inserted: ${totalInserted} bars`);
     console.log(`   Duration: ${duration.toFixed(2)}s`);
