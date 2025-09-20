@@ -4,14 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "tbo": "tsx scripts/compute-tbo.ts"
+    "tbo": "tsx scripts/compute-tbo.ts",
+    "ingest:tbo": "tsx src/ingest/ingest-tbo.ts"
   },
   "dependencies": {
-    "ccxt": "^4.3.88"
+    "@supabase/supabase-js": "^2.57.4",
+    "ccxt": "^4.5.5",
+    "dotenv": "^17.2.2"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",
-    "tsx": "^4.19.1",
+    "tsx": "^4.20.5",
     "typescript": "^5.6.3"
   }
 }
