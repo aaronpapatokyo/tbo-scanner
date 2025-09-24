@@ -2,11 +2,6 @@
 import 'dotenv/config';
 import { ingestRange, IngestRangeParams } from './ingest-range';
 
-/**
- * Simple CLI orchestrator to run ingestRange for multiple symbol/timeframe combos.
- * Accepts --symbols (csv), --timeframes (csv), --since (ISO, required), --limitPerReq, --speed, --exchange, --concurrency
- */
-
 function argVal(flag: string, def?: string) {
   const prefix = `--${flag}=`;
   const full = process.argv.find((a) => a.startsWith(prefix));
@@ -33,11 +28,7 @@ async function runBatches<T>(items: T[], concurrency: number, worker: (t: T) => 
   }
   for (let i = 0; i < items.length; i += concurrency) {
     const batch = items.slice(i, i + concurrency);
-    await Promise.all(
-      batch.map(async (it) => {
-        await worker(it);
-      })
-    );
+    await Promise.all(batch.map((it) => worker(it)));
   }
 }
 
@@ -79,7 +70,6 @@ async function main() {
   let successes = 0;
   let failures = 0;
 
-  // worker wrapper that counts results and isolates errors per task
   const worker = async (t: IngestRangeParams) => {
     try {
       console.log(`Starting ingestRange ${t.symbol} ${t.timeframe}`);
@@ -98,22 +88,24 @@ async function main() {
 }
 
 /**
- * ESM-compatible "run as script" detection.
+ * Run detection that also looks for CLI flags (covers tsx)
  */
-const isRunDirectly = (() => {
+const shouldRun = (() => {
   try {
     const scriptPath = process.argv[1] || '';
     const thisPath = new URL(import.meta.url).pathname;
     if (thisPath === scriptPath) return true;
     const fileName = thisPath.split('/').pop();
     if (fileName && scriptPath.endsWith(fileName)) return true;
+    const cliFlags = ['--symbols', '--timeframes', '--since', '--limitPerReq', '--speed', '--exchange', '--concurrency'];
+    if (process.argv.some(a => cliFlags.some(f => a === f || a.startsWith(f + '=')))) return true;
     return false;
   } catch {
     return false;
   }
 })();
 
-if (isRunDirectly) {
+if (shouldRun) {
   main().catch((e) => {
     console.error(e);
     process.exit(1);

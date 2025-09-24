@@ -98,7 +98,6 @@ export async function ingestRange(params: IngestRangeParams) {
 
     total += rows.length;
 
-    // Ensure we have a numeric lastTs for calculation; fallback to cursor if not set.
     const lastNumeric = lastTs !== null ? lastTs : cursor;
     const next = lastNumeric + tfMs;
     // Avoid infinite loop: always ensure cursor increases.
@@ -124,22 +123,27 @@ export async function ingestRange(params: IngestRangeParams) {
 }
 
 /**
- * ESM-compatible "run as script" detection.
+ * Robust "run as script" detection:
+ * - true if module path matches executed script path, OR
+ * - true if CLI flags for this script are present (covers tsx calling from temp path).
  */
-const isRunDirectly = (() => {
+const shouldRun = (() => {
   try {
     const scriptPath = process.argv[1] || '';
     const thisPath = new URL(import.meta.url).pathname;
     if (thisPath === scriptPath) return true;
     const fileName = thisPath.split('/').pop();
     if (fileName && scriptPath.endsWith(fileName)) return true;
+    // If invoked with CLI flags for this script, run as script:
+    const cliFlags = ['--symbol', '--timeframe', '--since', '--until', '--limitPerReq', '--speed', '--exchange'];
+    if (process.argv.some(a => cliFlags.some(f => a === f || a.startsWith(f + '=')))) return true;
     return false;
   } catch {
     return false;
   }
 })();
 
-if (isRunDirectly) {
+if (shouldRun) {
   const symbol = argVal('symbol');
   const timeframe = argVal('timeframe');
   const sinceStr = argVal('since');
