@@ -125,7 +125,11 @@ export async function ingestRange(params: IngestRangeParams) {
 /**
  * Robust "run as script" detection:
  * - true if module path matches executed script path, OR
- * - true if CLI flags for this script are present (covers tsx calling from temp path).
+ * - true if executed filename matches, OR
+ * - true if CLI flags that uniquely indicate a single-run (--symbol or --timeframe) are present.
+ *
+ * NOTE: we intentionally do NOT treat --since alone as a signal to run, because ingest-all uses --since
+ * and imports this module. This prevents the orchestrator from accidentally triggering the CLI usage message.
  */
 const shouldRun = (() => {
   try {
@@ -134,8 +138,8 @@ const shouldRun = (() => {
     if (thisPath === scriptPath) return true;
     const fileName = thisPath.split('/').pop();
     if (fileName && scriptPath.endsWith(fileName)) return true;
-    // If invoked with CLI flags for this script, run as script:
-    const cliFlags = ['--symbol', '--timeframe', '--since', '--until', '--limitPerReq', '--speed', '--exchange'];
+    // Only auto-run if flags that indicate a single-task run are present.
+    const cliFlags = ['--symbol', '--timeframe'];
     if (process.argv.some(a => cliFlags.some(f => a === f || a.startsWith(f + '=')))) return true;
     return false;
   } catch {
