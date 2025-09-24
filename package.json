@@ -1,20 +1,23 @@
 {
   "name": "tbo-scanner",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
   "type": "module",
+  "license": "MIT",
   "scripts": {
-    "tbo": "tsx scripts/compute-tbo.ts",
-    "ingest:tbo": "tsx src/ingest/ingest-tbo.ts"
+    "ingest:range": "tsx src/ingest/ingest-range.ts",
+    "ingest:all": "tsx src/ingest/ingest-all.ts",
+    "check:freshness": "tsx scripts/check-freshness.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
-    "ccxt": "^4.5.5",
+    "@supabase/supabase-js": "^2.0.0",
+    "ccxt": "^4.0.61",
     "dotenv": "^17.2.2"
   },
   "devDependencies": {
-    "@types/node": "^24.5.2",
-    "tsx": "^4.20.5",
-    "typescript": "^5.6.3"
+    "tsx": "^3.12.7",
+    "vitest": "^3.2.4"
   }
 }

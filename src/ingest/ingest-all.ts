@@ -1,65 +1,123 @@
 /* eslint-disable no-console */
 import 'dotenv/config';
-import fs from 'node:fs';
-import path from 'node:path';
-import { getWatermark } from './watermark';
-import { ingestRange } from './ingest-range';
+import { ingestRange, IngestRangeParams } from './ingest-range';
 
-type Pair = { symbol: string; timeframe: string; speed?: string };
+/**
+ * Simple CLI orchestrator to run ingestRange for multiple symbol/timeframe combos.
+ * Accepts --symbols (csv), --timeframes (csv), --since (ISO, required), --limitPerReq, --speed, --exchange, --concurrency
+ */
 
-function argVal(flag: string) {
-  const f = process.argv.find((a) => a.startsWith(\`--\${flag}=\`));
-  return f ? f.split('=').slice(1).join('=').trim() : undefined;
+function argVal(flag: string, def?: string) {
+  const prefix = `--${flag}=`;
+  const full = process.argv.find((a) => a.startsWith(prefix));
+  if (full) return full.slice(prefix.length);
+  const idx = process.argv.findIndex((a) => a === `--${flag}`);
+  if (idx >= 0 && idx + 1 < process.argv.length) return process.argv[idx + 1];
+  return def;
 }
 
-const root = process.cwd();
-const cfgPath = path.join(root, 'config', 'ingest.json');
-
-function loadPairs(): Pair[] {
-  if (!fs.existsSync(cfgPath)) {
-    return [{ symbol: 'BTC/USDT', timeframe: '1d', speed: 'Standard' }];
-  }
-  const raw = fs.readFileSync(cfgPath, 'utf8');
-  return JSON.parse(raw);
+function splitCsv(s?: string) {
+  if (!s) return [];
+  return s
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
 }
 
-(async () => {
-  const sinceOverride = argVal('since');
-  the untilOverride = argVal('until');
-
-  const pairs = loadPairs();
-  const results: any[] = [];
-
-  for (const p of pairs) {
-    const speed = p.speed ?? 'Standard';
-    let since: Date;
-
-    if (sinceOverride) {
-      since = new Date(sinceOverride);
-    } else {
-      const wm = await getWatermark({
-        symbol: p.symbol,
-        timeframe: p.timeframe,
-        speed,
-      });
-      since = wm ?? new Date(Date.now() - 90 * 24 * 3600_000);
+async function runBatches<T>(items: T[], concurrency: number, worker: (t: T) => Promise<void>) {
+  if (concurrency <= 1) {
+    for (const it of items) {
+      await worker(it);
     }
-
-    const until = untilOverride ? new Date(untilOverride) : undefined;
-
-    console.log(
-      \`Ingesting \${p.symbol} \${p.timeframe} (\${speed}) from \${since.toISOString()}\${until ? ' to ' + until.toISOString() : ''}\`
+    return;
+  }
+  for (let i = 0; i < items.length; i += concurrency) {
+    const batch = items.slice(i, i + concurrency);
+    await Promise.all(
+      batch.map(async (it) => {
+        await worker(it);
+      })
     );
+  }
+}
 
-    const r = await ingestRange({
-      symbol: p.symbol,
-      timeframe: p.timeframe,
-      speed,
-      since,
-      until,
-    });
-    results.push(r);
+async function main() {
+  const symbols = splitCsv(argVal('symbols', 'BTC/USDT'));
+  const timeframes = splitCsv(argVal('timeframes', '1d'));
+  const sinceStr = argVal('since');
+  const limitPerReq = Number(argVal('limitPerReq', '1000'));
+  const speed = argVal('speed', 'Standard');
+  const exchangeId = argVal('exchange', 'binance');
+  const concurrency = Math.max(1, Number(argVal('concurrency', '1')) || 1);
+
+  if (!sinceStr) {
+    console.error('Missing --since; Usage: --since=2024-01-01T00:00:00Z');
+    process.exit(1);
   }
 
-  console.log(JSON.stringify({ results }, null, 2));
+  const since = new Date(sinceStr);
+  if (!Number.isFinite(since.getTime())) {
+    console.error('Invalid --since value:', sinceStr);
+    process.exit(1);
+  }
+
+  const tasks: IngestRangeParams[] = [];
+  for (const s of symbols) {
+    for (const tf of timeframes) {
+      tasks.push({
+        symbol: s,
+        timeframe: tf,
+        since,
+        limitPerReq,
+        speed,
+        exchangeId,
+      });
+    }
+  }
+
+  console.log(`Starting ingest-all for ${tasks.length} tasks (concurrency=${concurrency})`);
+  let successes = 0;
+  let failures = 0;
+
+  // worker wrapper that counts results and isolates errors per task
+  const worker = async (t: IngestRangeParams) => {
+    try {
+      console.log(`Starting ingestRange ${t.symbol} ${t.timeframe}`);
+      await ingestRange(t);
+      successes++;
+    } catch (err) {
+      failures++;
+      console.error(`Failed ingestRange for ${t.symbol} ${t.timeframe}:`, err);
+    }
+  };
+
+  await runBatches(tasks, concurrency, worker);
+
+  console.log(`ingest-all complete. successes=${successes}, failures=${failures}`);
+  if (failures > 0) process.exitCode = 2;
+}
+
+/**
+ * ESM-compatible "run as script" detection.
+ */
+const isRunDirectly = (() => {
+  try {
+    const scriptPath = process.argv[1] || '';
+    const thisPath = new URL(import.meta.url).pathname;
+    if (thisPath === scriptPath) return true;
+    const fileName = thisPath.split('/').pop();
+    if (fileName && scriptPath.endsWith(fileName)) return true;
+    return false;
+  } catch {
+    return false;
+  }
 })();
+
+if (isRunDirectly) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}
+
+export { main as ingestAll };

@@ -5,8 +5,12 @@ import { getSupabase } from './supabaseClient';
 import { setWatermark } from './watermark';
 
 function argVal(flag: string, def?: string) {
-  const f = process.argv.find((a) => a.startsWith(\`--\${flag}=\`));
-  return f ? f.split('=').slice(1).join('=').trim() : def;
+  const prefix = `--${flag}=`;
+  const full = process.argv.find((a) => a.startsWith(prefix));
+  if (full) return full.slice(prefix.length);
+  const idx = process.argv.findIndex((a) => a === `--${flag}`);
+  if (idx >= 0 && idx + 1 < process.argv.length) return process.argv[idx + 1];
+  return def;
 }
 
 const TF_MS: Record<string, number> = {
@@ -41,10 +45,10 @@ export async function ingestRange(params: IngestRangeParams) {
   } = params;
 
   const tfMs = TF_MS[timeframe];
-  if (!tfMs) throw new Error(\`Unsupported timeframe: \${timeframe}\`);
+  if (!tfMs) throw new Error(`Unsupported timeframe: ${timeframe}`);
 
   const exchangeCls = (ccxt as any)[exchangeId];
-  if (!exchangeCls) throw new Error(\`Unknown exchange: \${exchangeId}\`);
+  if (!exchangeCls) throw new Error(`Unknown exchange: ${exchangeId}`);
   const exchange = new exchangeCls({ enableRateLimit: true });
 
   const sb = getSupabase();
@@ -70,10 +74,10 @@ export async function ingestRange(params: IngestRangeParams) {
         timeframe,
         speed,
         ts: new Date(t).toISOString(),
-        open: Number(o),
-        high: Number(h),
-        low: Number(l),
-        close: Number(c),
+        open: o == null ? null : Number(o),
+        high: h == null ? null : Number(h),
+        low: l == null ? null : Number(l),
+        close: c == null ? null : Number(c),
         volume: v == null ? null : Number(v),
         exchange: exchangeId,
         updated_at: new Date().toISOString(),
@@ -94,7 +98,10 @@ export async function ingestRange(params: IngestRangeParams) {
 
     total += rows.length;
 
-    const next = (lastTs as number) + tfMs;
+    // Ensure we have a numeric lastTs for calculation; fallback to cursor if not set.
+    const lastNumeric = lastTs !== null ? lastTs : cursor;
+    const next = lastNumeric + tfMs;
+    // Avoid infinite loop: always ensure cursor increases.
     cursor = next <= cursor ? cursor + tfMs : next;
 
     if (speed !== 'Fast') await new Promise((r) => setTimeout(r, 500));
@@ -116,7 +123,23 @@ export async function ingestRange(params: IngestRangeParams) {
   return summary;
 }
 
-if (require.main === module) {
+/**
+ * ESM-compatible "run as script" detection.
+ */
+const isRunDirectly = (() => {
+  try {
+    const scriptPath = process.argv[1] || '';
+    const thisPath = new URL(import.meta.url).pathname;
+    if (thisPath === scriptPath) return true;
+    const fileName = thisPath.split('/').pop();
+    if (fileName && scriptPath.endsWith(fileName)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+})();
+
+if (isRunDirectly) {
   const symbol = argVal('symbol');
   const timeframe = argVal('timeframe');
   const sinceStr = argVal('since');
@@ -126,7 +149,9 @@ if (require.main === module) {
   const exchangeId = argVal('exchange', 'binance');
 
   if (!symbol || !timeframe || !sinceStr) {
-    console.error('Usage: tsx src/ingest/ingest-range.ts --symbol=BTC/USDT --timeframe=1d --since=2024-01-01T00:00:00Z [--until=ISO] [--limitPerReq=1000] [--speed=Standard|Fast] [--exchange=binance]');
+    console.error(
+      'Usage: tsx src/ingest/ingest-range.ts --symbol=BTC/USDT --timeframe=1d --since=2024-01-01T00:00:00Z [--until=ISO] [--limitPerReq=1000] [--speed=Standard|Fast] [--exchange=binance]'
+    );
     process.exit(1);
   }
 
