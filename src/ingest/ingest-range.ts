@@ -14,7 +14,9 @@ type Args = {
   timeframe: string;
   since?: number;
   limit?: number;
-  verbose?: boolean;
+  verbose: boolean;
+  batch: number;
+  maxRetries: number;
 };
 
 function parseArgs(): Args {
@@ -24,7 +26,7 @@ function parseArgs(): Args {
   })) as any;
 
   if (!args.symbol || !args.timeframe) {
-    console.error("Usage: ingest-range.ts --symbol=BTC/USDT --timeframe=1d [--since=2024-01-01] [--limit=1000] [--verbose]");
+    console.error("Usage: ingest-range.ts --symbol=BTC/USDT --timeframe=1d [--since=2024-01-01] [--limit=1000] [--verbose] [--batch=200] [--maxRetries=3]");
     process.exit(1);
   }
 
@@ -35,8 +37,10 @@ function parseArgs(): Args {
 
   const limit = args.limit ? Number(args.limit) : undefined;
   const verbose = args.verbose === "true" || args.verbose === "" || args.verbose === true;
+  const batch = args.batch ? Number(args.batch) : 200;
+  const maxRetries = args.maxRetries ? Number(args.maxRetries) : 3;
 
-  return { symbol: args.symbol, timeframe: args.timeframe, since: sinceNum, limit, verbose };
+  return { symbol: args.symbol, timeframe: args.timeframe, since: sinceNum, limit, verbose, batch, maxRetries };
 }
 
 function timeframeToMs(tf: string): number {
@@ -54,8 +58,44 @@ function timeframeToMs(tf: string): number {
   return n * unit;
 }
 
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function upsertBatchWithRetries(table: string, rows: any[], onConflict: string, maxRetries: number, verbose: boolean) {
+  let attempt = 0;
+  let backoff = 500; // ms
+  while (attempt <= maxRetries) {
+    const { error } = await supabase
+      .from(table)
+      .upsert(rows, { onConflict });
+
+    if (!error) {
+      if (verbose) console.error(`Upsert batch succeeded (size=${rows.length})`);
+      return { success: true };
+    }
+
+    attempt++;
+    if (attempt > maxRetries) {
+      if (verbose) console.error(`Upsert batch failed after ${maxRetries} retries: ${error.message}`);
+      return { success: false, error };
+    }
+
+    if (verbose) console.error(`Upsert batch failed (attempt ${attempt}/${maxRetries}). Retrying in ${backoff}ms: ${error.message}`);
+    await sleep(backoff);
+    backoff *= 2;
+  }
+  return { success: false };
+}
+
 async function main() {
-  const { symbol, timeframe, since, limit, verbose } = parseArgs();
+  const { symbol, timeframe, since, limit, verbose, batch, maxRetries } = parseArgs();
   const tfMs = timeframeToMs(timeframe);
 
   const ex = new (ccxt as any).binance({ enableRateLimit: true, timeout: 30000 });
@@ -100,13 +140,13 @@ async function main() {
   // Compute TBO on all bars
   const { series } = computeTBO(o, h, l, c);
 
-  // Upsert each bar with TBO fields (snake_case column names)
-  let upserted = 0, failed = 0;
+  // Build payloads
+  const payloads = [];
   for (let i = 0; i < t.length; ++i) {
-    const payload = {
+    payloads.push({
       symbol,
       timeframe,
-      timestamp: new Date(t[i]).toISOString(),
+      timestamp: new Date(t[i]).toISOString(), // canonical timestamptz column
       open: o[i],
       high: h[i],
       low: l[i],
@@ -125,28 +165,41 @@ async function main() {
       breakout: series[i].breakout,
       breakdown: series[i].breakdown,
       support: series[i].support,
-      resistance: series[i].resistance
-    };
+      resistance: series[i].resistance,
+      exchange: "binance"
+    });
+  }
 
-    const { error } = await supabase
-      .from("tbo_bars")
-      .upsert([payload], { onConflict: "symbol,timeframe,timestamp" });
+  // Chunk and upsert batches sequentially (safer for rate limits)
+  const batches = chunkArray(payloads, batch);
+  let totalUpserted = 0;
+  let totalFailedBatches = 0;
 
-    if (error) {
-      failed++;
-      if (verbose) console.error(`Upsert failed for ${symbol} ${timeframe} @ ${payload.timestamp}:`, error.message);
+  for (let bi = 0; bi < batches.length; bi++) {
+    const rows = batches[bi];
+    if (verbose) console.error(`Upserting batch ${bi + 1}/${batches.length} (size=${rows.length})...`);
+    const res = await upsertBatchWithRetries("tbo_bars", rows, "symbol,timeframe,timestamp", maxRetries, verbose);
+
+    if (!res.success) {
+      totalFailedBatches++;
+      console.error(`Batch ${bi + 1} failed permanently.`);
+      // optionally: write failing rows to local file or S3 for later reprocessing
     } else {
-      upserted++;
+      totalUpserted += rows.length;
     }
+    // small pause between batches to be polite to the DB
+    await sleep(100);
   }
 
   // Update watermark (optional)
   const lastTs = new Date(t[t.length - 1]).toISOString();
-  await supabase
+  const { error: wmErr } = await supabase
     .from("tbo_watermark")
     .upsert([{ symbol, timeframe, timestamp: lastTs }], { onConflict: "symbol,timeframe" });
 
-  console.log(`Upserted ${upserted} bars for ${symbol} ${timeframe} (failed: ${failed}).`);
+  if (wmErr) console.error("Watermark upsert error:", wmErr.message);
+
+  console.log(`Batched upsert complete for ${symbol} ${timeframe}. Upserted rows (approx): ${totalUpserted}. Failed batches: ${totalFailedBatches}.`);
   console.log(`First timestamp: ${new Date(t[0]).toISOString()}, Last timestamp: ${lastTs}`);
 }
 
