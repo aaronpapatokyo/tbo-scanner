@@ -100,7 +100,7 @@ async function main() {
   // Compute TBO on all bars
   const { series } = computeTBO(o, h, l, c);
 
-  // Upsert each bar with TBO fields
+  // Upsert each bar with TBO fields (snake_case column names)
   let upserted = 0, failed = 0;
   for (let i = 0; i < t.length; ++i) {
     const payload = {
@@ -112,10 +112,10 @@ async function main() {
       low: l[i],
       close: c[i],
       volume: v[i],
-      TBO_Fast: series[i].TBO_Fast,
-      TBO_Mid_Fast: series[i].TBO_Mid_Fast,
-      TBO_Mid_Slow: series[i].TBO_Mid_Slow,
-      TBO_Slow: series[i].TBO_Slow,
+      tbo_fast: series[i].TBO_Fast,
+      tbo_mid_fast: series[i].TBO_Mid_Fast,
+      tbo_mid_slow: series[i].TBO_Mid_Slow,
+      tbo_slow: series[i].TBO_Slow,
       open_long: series[i].open_long,
       open_short: series[i].open_short,
       close_long: series[i].close_long,
