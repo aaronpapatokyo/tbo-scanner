@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import * as ccxt from 'ccxt'; // keep as namespace import so it works without esModuleInterop
+import * as ccxt from 'ccxt';
 
 type OHLCV = [number, number, number, number, number, number]; // timestamp, open, high, low, close, volume
 
@@ -90,7 +90,6 @@ async function main() {
 
   let exchange: any;
   try {
-    // runtime lookup; typed as any to avoid TS namespace errors
     const ctor = (ccxt as any)[exchangeId];
     exchange = ctor ? new ctor({ enableRateLimit: true }) : new (ccxt as any).Exchange({ id: exchangeId, enableRateLimit: true });
   } catch (err) {
@@ -119,6 +118,8 @@ async function main() {
   }
 }
 
-if (require.main === module) {
-  main();
-}
+// In ESM environments `require` is not available; call main() directly and handle errors.
+main().catch((err) => {
+  console.error('Unhandled error in scanner:', err);
+  process.exit(1);
+});
