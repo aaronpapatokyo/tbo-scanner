@@ -1,0 +1,24 @@
+name: ccxt-scanner
+on:
+  schedule:
+    # run every 15 minutes; change cron as needed
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  run-scanner:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install deps
+        run: npm ci
+      - name: Run scanner and upsert to Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx tsx src/makeshift-scanner/ccxt-to-supabase.ts --exchange binance --symbol BTC/USDT --interval 1d --limit 100 --batch 50
