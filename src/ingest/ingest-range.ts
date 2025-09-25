@@ -81,6 +81,28 @@ async function upsertBatchWithRetries(table: string, rows: any[], onConflict: st
       return { success: true };
     }
 
+    const msg = (error?.message ?? "").toString();
+
+    // Common actionable hints
+    if (msg.includes("no unique or exclusion constraint matching the ON CONFLICT specification")) {
+      console.error("");
+      console.error("Upsert failed because the table does not have a unique constraint matching onConflict:", onConflict);
+      console.error("Run the following SQL in the Supabase SQL editor to add the unique index:");
+      console.error(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_tbo_bars_symbol_timeframe_timestamp
+  ON public.tbo_bars (symbol, timeframe, "timestamp");`);
+      console.error("");
+      return { success: false, error };
+    }
+
+    if (msg.includes('null value in column "ts"') || msg.includes('null value in column "timestamp"')) {
+      console.error("");
+      console.error("Upsert failed because a NOT NULL column (ts or timestamp) was missing from the payload.");
+      console.error("This script now includes 'ts' and 'timestamp' in payloads; ensure the table schema matches, or run:");
+      console.error(`ALTER TABLE public.tbo_bars ALTER COLUMN ts DROP NOT NULL; -- if you intentionally allow nulls (not recommended)`);
+      console.error("");
+      return { success: false, error };
+    }
+
     attempt++;
     if (attempt > maxRetries) {
       if (verbose) console.error(`Upsert batch failed after ${maxRetries} retries: ${error.message}`);
@@ -140,13 +162,17 @@ async function main() {
   // Compute TBO on all bars
   const { series } = computeTBO(o, h, l, c);
 
-  // Build payloads
-  const payloads = [];
+  // Build payloads (include both ts and canonical timestamp fields)
+  const payloads: any[] = [];
   for (let i = 0; i < t.length; ++i) {
+    const iso = new Date(t[i]).toISOString();
     payloads.push({
       symbol,
       timeframe,
-      timestamp: new Date(t[i]).toISOString(), // canonical timestamptz column
+      // ts column in your DB is NOT NULL and is timestamptz -> send ISO string
+      ts: iso,
+      // canonical timestamp column (unique index and upsert key)
+      timestamp: iso,
       open: o[i],
       high: h[i],
       low: l[i],
