@@ -1,4 +1,5 @@
 node_modules
 dist
 .env
-.DS_Store
+.DS_Storedata/
+data/ git add .gitignore git restore --staged ./data/btc-usdt-1d.json

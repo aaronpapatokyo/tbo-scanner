@@ -1,0 +1,15 @@
+ALTER TABLE public.tbo_bars
+  ADD COLUMN IF NOT EXISTS tbo_fast double precision,
+  ADD COLUMN IF NOT EXISTS tbo_mid_fast double precision,
+  ADD COLUMN IF NOT EXISTS tbo_mid_slow double precision,
+  ADD COLUMN IF NOT EXISTS tbo_slow double precision,
+  ADD COLUMN IF NOT EXISTS open_long boolean,
+  ADD COLUMN IF NOT EXISTS open_short boolean,
+  ADD COLUMN IF NOT EXISTS close_long boolean,
+  ADD COLUMN IF NOT EXISTS close_short boolean,
+  ADD COLUMN IF NOT EXISTS crossup boolean,
+  ADD COLUMN IF NOT EXISTS crossdown boolean,
+  ADD COLUMN IF NOT EXISTS breakout boolean,
+  ADD COLUMN IF NOT EXISTS breakdown boolean,
+  ADD COLUMN IF NOT EXISTS support double precision,
+  ADD COLUMN IF NOT EXISTS resistance double precision;

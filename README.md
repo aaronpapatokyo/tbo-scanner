@@ -1,58 +1,206 @@
-# TBO Scanner (Starter)
+# TBO Scanner
 
-This repo contains:
-- TypeScript port of the TBO indicator (from your Pine Script)
-- Technical Analysis utilities (EMA, SMA, RSI, Bollinger Bands)
-- A CLI script to fetch Binance spot OHLCV with CCXT and compute TBO signals for validation
-
-Next steps (planned in follow-up PRs):
-- Supabase schema and ingestion jobs
-- Next.js app with a scanner UI and filters for TBO signals
-
-## Prerequisites
-- Node.js 18+
-- pnpm or npm
-
-## Setup
-1. Copy `.env.example` to `.env`
-2. Install deps
-   - `pnpm install` (or `npm install`)
-3. Run a quick test:
-   - `pnpm run tbo --symbol=BTC/USDT --timeframe=1h --since=2024-01-01`
-
-This prints the latest computed TBO signals and key series values.
-
-## Example
-```bash
-pnpm run tbo --symbol=ETH/USDT --timeframe=4h --limit=1000
-```
-
-Use TradingView with the same symbol/timeframe and compare signals visually. If anything looks off, please share a screenshot/time index and we’ll adjust.
-
-## Notes on Parity
-- The port preserves the Pine logic, including the exact TBO speeds, confirmation bars, and breakout/breakdown logic (including the MA_increasing/MA_decreasing behavior as written).
-- Breakout method default is 'XL' as in the script.
-- Support/Resistance use the same RSI thresholds (35/65) and last-crossover logic.
-
-## Roadmap
-- PR 1 (this): Indicator + CLI validator
-- PR 2: Supabase schema + ingestion (CCXT batch for Binance USDT spot + timeframes: 5m, 30m, 1h, 4h, 1d, 1w)
-- PR 3: Next.js scanner UI, filters for: Open Long, Open Short, Close Long, Close Short, Cross Up, Cross Down, Breakout, Breakdown, Resistance, Support, TBO Fast/Mid Fast/Mid Slow/Slow lines
-- PR 4: Deploy to Vercel + Vercel Cron + expansion to more pairs
-
-## Attribution
-- TBO Pine Script © thebettertraders by kaio (https://github.com/kaiomp) under the Mozilla Public License 2.0. This repository includes a TypeScript port of the indicator logic with attribution per MPL 2.0 
+…(existing sections above remain unchanged)…
 
 ## Inspect a specific bar (new)
-Use `--at=YYYY-MM-DD` (UTC) and the CLI will fetch a warmup window and print the signals for that exact bar.
+
+Use `--at=YYYY-MM-DD` (UTC) and the CLI will fetch a warmup window and print the signals for that exact bar. You can also pass a full ISO timestamp (e.g., `2025-06-20T12:00:00Z`).
 
 Examples:
 ```bash
 # BTC/USDT daily — 2025-09-16 (with 400 warmup bars)
-npm run tbo -- --symbol=BTC/USDT --timeframe=1d --at=2025-09-16 --warmup=400
+npm run tbo -- --symbol=BTC/USDT --timeframe=1d --at=2025-09-16 --warmup=400 --verbose
 
-# ETH/USDT daily — 2023-11-21 (default warmup 400)
-npm run tbo -- --symbol=ETH/USDT --timeframe=1d --at=2023-11-21
-```
+# ETH/USDT daily — 2023-11-21
+npm run tbo -- --symbol=ETH/USDT --timeframe=1d --at=2023-11-21 --warmup=400
 
-Tip: Set TradingView’s timezone to UTC and ensure you’re on Binance spot (BTCUSDT) to match candles.
+# 4h bars open at 00:00/04:00/08:00/12:00/16:00/20:00 UTC — align your `--at` to those opens
+npm run tbo -- --symbol=BTC/USDT --timeframe=4h --at=2025-06-20T12:00:00Z --warmup=800
+set -euo pipefail
+
+BRANCH="feat/cli-at-warmup-supabase"
+git checkout -b "$BRANCH"
+
+mkdir -p supabase src/ingest scripts
+
+# scripts/compute-tbo.ts
+cat > scripts/compute-tbo.ts <<'EOF'
+#!/usr/bin/env tsx
+import ccxt from "ccxt";
+import { computeTBO, TBOSpeed } from "../src/lib/tbo";
+
+type Args = {
+  symbol: string;
+  timeframe: string;
+  since?: number;
+  limit?: number;
+  speed?: TBOSpeed;
+  at?: string;       // target bar to inspect (e.g., 2025-09-16 or ISO)
+  warmup?: number;   // bars of warmup history before the target (default 400)
+  verbose?: boolean; // print progress info
+};
+
+function timeframeToMs(tf: string): number {
+  const m = tf.match(/^(\d+)([mhdw])$/i);
+  if (!m) throw new Error(`Unsupported timeframe: ${tf}`);
+  const n = Number(m[1]);
+  const u = m[2].toLowerCase();
+  const unit =
+    u === "m" ? 60_000 :
+    u === "h" ? 3_600_000 :
+    u === "d" ? 86_400_000 :
+    u === "w" ? 604_800_000 :
+    0;
+  if (!unit) throw new Error(`Unsupported timeframe unit: ${u}`);
+  return n * unit;
+}
+
+function parseAtToMs(at: string): number {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(at)) {
+    return Date.parse(`${at}T00:00:00Z`); // force UTC midnight
+  }
+  const ms = Date.parse(at);
+  if (isNaN(ms)) throw new Error(`Could not parse --at value "${at}". Use YYYY-MM-DD or ISO.`);
+  return ms;
+}
+
+function parseArgs(): Args {
+  const args = Object.fromEntries(process.argv.slice(2).map((s: string) => {
+    const [k, v] = s.replace(/^--/, "").split("=");
+    return [k, v ?? "true"];
+  })) as any;
+
+  if (!args.symbol || !args.timeframe) {
+    console.error("Usage: pnpm run tbo -- --symbol=BTC/USDT --timeframe=1d [--since=2024-01-01] [--limit=1000] [--speed=Standard|Fast|Slow] [--at=YYYY-MM-DD] [--warmup=400] [--verbose]");
+    process.exit(1);
+  }
+
+  let sinceNum: number | undefined;
+  if (args.since) {
+    sinceNum = isNaN(Number(args.since)) ? Date.parse(args.since) : Number(args.since);
+  }
+
+  const limit = args.limit ? Number(args.limit) : undefined;
+  const speed = (args.speed ?? "Standard") as TBOSpeed;
+  const at = args.at ? String(args.at) : undefined;
+  const warmup = args.warmup ? Number(args.warmup) : undefined;
+  const verbose = args.verbose === "true" || args.verbose === "" || args.verbose === true;
+
+  return { symbol: args.symbol, timeframe: args.timeframe, since: sinceNum, limit, speed, at, warmup, verbose };
+}
+
+async function main() {
+  const { symbol, timeframe, since, limit, speed, at, warmup, verbose } = parseArgs();
+  const tfMs = timeframeToMs(timeframe);
+
+  const ex = new (ccxt as any).binance({ enableRateLimit: true, timeout: 30000 });
+  if (verbose) (ex as any).verbose = false; // set to true for ccxt wire logs
+  await ex.loadMarkets();
+  if (!ex.markets[symbol]) {
+    console.error(`Symbol ${symbol} not found on Binance. Example: BTC/USDT`);
+    process.exit(1);
+  }
+
+  // Determine fetch window
+  let effectiveSince = since;
+  let effectiveLimit = limit;
+
+  let targetTs: number | undefined;
+  const warmupBars = warmup ?? 400; // enough for SMA200 + highest/lowest100 + RSI/BB
+
+  if (at) {
+    targetTs = parseAtToMs(at);
+    if (!effectiveSince) effectiveSince = targetTs - warmupBars * tfMs;
+    if (!effectiveLimit) {
+      const barsToTarget = Math.ceil((targetTs - effectiveSince) / tfMs) + 10;
+      effectiveLimit = Math.max(barsToTarget, warmupBars + 20);
+    }
+  } else {
+    if (!effectiveSince) effectiveSince = Date.now() - 400 * tfMs;
+    if (!effectiveLimit) effectiveLimit = 1500;
+  }
+
+  if (verbose) console.error(`Fetching OHLCV ${symbol} ${timeframe} since ${new Date(effectiveSince!).toISOString()} (limit=${effectiveLimit})...`);
+  const t0 = Date.now();
+  const ohlcv = await ex.fetchOHLCV(symbol, timeframe, effectiveSince, effectiveLimit);
+  const t1 = Date.now();
+  if (verbose) console.error(`Fetched ${ohlcv.length} candles in ${t1 - t0}ms`);
+
+  if (ohlcv.length === 0) {
+    console.error("No candles returned. Try adjusting --since earlier or increasing --limit.");
+    process.exit(1);
+  }
+
+  const t: number[] = [];
+  const o: number[] = [];
+  const h: number[] = [];
+  const l: number[] = [];
+  const c: number[] = [];
+  for (const row of ohlcv) {
+    t.push(row[0]);
+    o.push(row[1]);
+    h.push(row[2]);
+    l.push(row[3]);
+    c.push(row[4]);
+  }
+
+  const { series } = computeTBO(o, h, l, c, { speed });
+
+  // Pick which bar to print
+  let idx = series.length - 1;
+  let barTs = t[idx];
+
+  if (targetTs != null) {
+    const exactIdx = t.findIndex(ms => ms === targetTs);
+    if (exactIdx !== -1) {
+      idx = exactIdx;
+      barTs = t[idx];
+    } else {
+      const nextIdx = t.findIndex(ms => ms > targetTs);
+      const floorIdx = nextIdx === -1 ? t.length - 1 : nextIdx - 1;
+      if (floorIdx >= 0) {
+        idx = floorIdx;
+        barTs = t[idx];
+        console.warn(`Target ${new Date(targetTs).toISOString()} not found exactly. Showing nearest prior bar ${new Date(barTs).toISOString()} instead.`);
+      } else {
+        console.error("Target bar not within fetched range. Increase --warmup or adjust --since/--limit.");
+        process.exit(1);
+      }
+    }
+  }
+
+  const row = series[idx];
+  console.log(JSON.stringify({
+    symbol,
+    timeframe,
+    at: targetTs ? new Date(targetTs).toISOString() : undefined,
+    barTimestamp: new Date(barTs).toISOString(),
+    close: c[idx],
+    speed,
+    signals: {
+      open_long: row.open_long,
+      open_short: row.open_short,
+      close_long: row.close_long,
+      close_short: row.close_short,
+      crossup: row.crossup,
+      crossdown: row.crossdown,
+      breakout: row.breakout,
+      breakdown: row.breakdown
+    },
+    lines: {
+      TBO_Fast: row.TBO_Fast,
+      TBO_Mid_Fast: row.TBO_Mid_Fast,
+      TBO_Mid_Slow: row.TBO_Mid_Slow,
+      TBO_Slow: row.TBO_Slow
+    },
+    supres: {
+      support: row.support,
+      resistance: row.resistance
+    }
+  }, null, 2));
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
