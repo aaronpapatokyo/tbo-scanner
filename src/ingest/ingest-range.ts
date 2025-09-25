@@ -94,11 +94,11 @@ async function upsertBatchWithRetries(table: string, rows: any[], onConflict: st
       return { success: false, error };
     }
 
-    if (msg.includes('null value in column "ts"') || msg.includes('null value in column "timestamp"')) {
+    if (msg.includes('null value in column "ts"') || msg.includes('null value in column "timestamp"') || msg.includes('null value in column "speed"')) {
       console.error("");
-      console.error("Upsert failed because a NOT NULL column (ts or timestamp) was missing from the payload.");
-      console.error("This script now includes 'ts' and 'timestamp' in payloads; ensure the table schema matches, or run:");
-      console.error(`ALTER TABLE public.tbo_bars ALTER COLUMN ts DROP NOT NULL; -- if you intentionally allow nulls (not recommended)`);
+      console.error("Upsert failed because a NOT NULL column was missing from the payload (ts/timestamp/speed).");
+      console.error("The script now includes ts, timestamp, speed, updated_at (and inserted_at when needed) in each payload.");
+      console.error("If you prefer the DB to supply defaults instead, add defaults or drop NOT NULL on those columns in the DB.");
       console.error("");
       return { success: false, error };
     }
@@ -162,17 +162,34 @@ async function main() {
   // Compute TBO on all bars
   const { series } = computeTBO(o, h, l, c);
 
-  // Build payloads (include both ts and canonical timestamp fields)
+  // Required NOT NULL columns in your table (from your schema)
+  // symbol, timeframe, ts, speed, inserted_at, exchange, updated_at
+  // We'll set sensible values for speed/inserted_at/updated_at so upserts don't hit NOT NULL violations.
+  const nowIso = () => new Date().toISOString();
+
+  // Build payloads (include both ts and canonical timestamp fields and required NOT NULLs)
   const payloads: any[] = [];
   for (let i = 0; i < t.length; ++i) {
     const iso = new Date(t[i]).toISOString();
+    // Defensive: ensure ts is present and a valid ISO string
+    if (!iso) {
+      if (verbose) console.error(`Skipping index ${i} because timestamp is invalid:`, t[i]);
+      continue;
+    }
+
     payloads.push({
       symbol,
       timeframe,
       // ts column in your DB is NOT NULL and is timestamptz -> send ISO string
       ts: iso,
-      // canonical timestamp column (unique index and upsert key)
+      // canonical timestamp column used for unique index / upsert key
       timestamp: iso,
+      // speed is NOT NULL in your schema; set to timeframe to be safe (adjust if you have a different meaning)
+      speed: timeframe,
+      // inserted_at/updated_at are NOT NULL in your schema; supply updated_at and inserted_at to be safe.
+      // If your DB has defaults (now()), these can be omitted — but supplying them is safe.
+      inserted_at: iso,
+      updated_at: nowIso(),
       open: o[i],
       high: h[i],
       low: l[i],
@@ -196,6 +213,24 @@ async function main() {
     });
   }
 
+  // validate payloads for required NOT NULL columns and log first invalid row if any
+  const required = ["symbol", "timeframe", "ts", "speed", "exchange", "updated_at"];
+  const badRows: any[] = [];
+  for (const p of payloads) {
+    for (const k of required) {
+      if (p[k] === undefined || p[k] === null) {
+        badRows.push({ missing: k, row: p });
+        break;
+      }
+    }
+  }
+  if (badRows.length > 0) {
+    console.error("Detected payload rows missing required NOT NULL columns. First example:");
+    console.error(JSON.stringify(badRows[0], null, 2));
+    console.error("Aborting ingestion to avoid repeated NOT NULL failures. Fix the payload generation or DB defaults and retry.");
+    process.exit(1);
+  }
+
   // Chunk and upsert batches sequentially (safer for rate limits)
   const batches = chunkArray(payloads, batch);
   let totalUpserted = 0;
@@ -204,12 +239,16 @@ async function main() {
   for (let bi = 0; bi < batches.length; bi++) {
     const rows = batches[bi];
     if (verbose) console.error(`Upserting batch ${bi + 1}/${batches.length} (size=${rows.length})...`);
+    // Print a single example row for debugging when verbose
+    if (verbose) console.error("Example payload row:", JSON.stringify(rows[0]));
+
     const res = await upsertBatchWithRetries("tbo_bars", rows, "symbol,timeframe,timestamp", maxRetries, verbose);
 
     if (!res.success) {
       totalFailedBatches++;
       console.error(`Batch ${bi + 1} failed permanently.`);
-      // optionally: write failing rows to local file or S3 for later reprocessing
+      // persist failing rows locally for later replay (optional)
+      // Example (disabled): writeFileSync(`/tmp/failing-batch-${bi+1}.json`, JSON.stringify(rows, null, 2));
     } else {
       totalUpserted += rows.length;
     }
