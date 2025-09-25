@@ -3,6 +3,8 @@ import ccxt from "ccxt";
 import { createClient } from "@supabase/supabase-js";
 import { computeTBO } from "../lib/tbo";
 import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
 dotenv.config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
@@ -17,6 +19,8 @@ type Args = {
   verbose: boolean;
   batch: number;
   maxRetries: number;
+  concurrency: number;
+  failDumpDir?: string;
 };
 
 function parseArgs(): Args {
@@ -26,7 +30,7 @@ function parseArgs(): Args {
   })) as any;
 
   if (!args.symbol || !args.timeframe) {
-    console.error("Usage: ingest-range.ts --symbol=BTC/USDT --timeframe=1d [--since=2024-01-01] [--limit=1000] [--verbose] [--batch=200] [--maxRetries=3]");
+    console.error("Usage: ingest-range.ts --symbol=BTC/USDT --timeframe=1d [--since=2024-01-01] [--limit=1000] [--verbose] [--batch=200] [--maxRetries=3] [--concurrency=1] [--failDumpDir=/tmp/ingest-failures]");
     process.exit(1);
   }
 
@@ -39,8 +43,10 @@ function parseArgs(): Args {
   const verbose = args.verbose === "true" || args.verbose === "" || args.verbose === true;
   const batch = args.batch ? Number(args.batch) : 200;
   const maxRetries = args.maxRetries ? Number(args.maxRetries) : 3;
+  const concurrency = args.concurrency ? Number(args.concurrency) : 1;
+  const failDumpDir = args.failDumpDir ? String(args.failDumpDir) : "/tmp/ingest-failures";
 
-  return { symbol: args.symbol, timeframe: args.timeframe, since: sinceNum, limit, verbose, batch, maxRetries };
+  return { symbol: args.symbol, timeframe: args.timeframe, since: sinceNum, limit, verbose, batch, maxRetries, concurrency, failDumpDir };
 }
 
 function timeframeToMs(tf: string): number {
@@ -97,8 +103,7 @@ async function upsertBatchWithRetries(table: string, rows: any[], onConflict: st
     if (msg.includes('null value in column "ts"') || msg.includes('null value in column "timestamp"') || msg.includes('null value in column "speed"')) {
       console.error("");
       console.error("Upsert failed because a NOT NULL column was missing from the payload (ts/timestamp/speed).");
-      console.error("The script now includes ts, timestamp, speed, updated_at (and inserted_at when needed) in each payload.");
-      console.error("If you prefer the DB to supply defaults instead, add defaults or drop NOT NULL on those columns in the DB.");
+      console.error("The script includes ts, timestamp, speed, updated_at and inserted_at in the payload; if you prefer defaults, add defaults in DB.");
       console.error("");
       return { success: false, error };
     }
@@ -116,8 +121,54 @@ async function upsertBatchWithRetries(table: string, rows: any[], onConflict: st
   return { success: false };
 }
 
+function ensureDumpDir(dir: string) {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch (e) {
+    // ignore
+  }
+}
+
+function dumpFailedBatch(dir: string, meta: { symbol: string; timeframe: string; batchIndex: number; attemptTime?: number }, rows: any[]) {
+  ensureDumpDir(dir);
+  const fname = `failed-${meta.symbol.replace(/[^\w-]/g, "_")}-${meta.timeframe.replace(/[^\w-]/g, "_")}-batch${meta.batchIndex}-${Date.now()}.json`;
+  const p = path.join(dir, fname);
+  try {
+    fs.writeFileSync(p, JSON.stringify({ meta, rows }, null, 2));
+    console.error(`Wrote failed batch to ${p}`);
+  } catch (e) {
+    console.error("Failed to write failed-batch dump:", e);
+  }
+}
+
+async function runBatchesConcurrently<T>(batches: T[][], concurrency: number, handler: (batch: T[], idx: number) => Promise<{ success: boolean } | any>) {
+  if (concurrency <= 1) {
+    // sequential fallback
+    for (let i = 0; i < batches.length; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await handler(batches[i], i);
+    }
+    return;
+  }
+
+  let idx = 0;
+  const workers: Promise<void>[] = [];
+  for (let w = 0; w < concurrency; w++) {
+    const worker = (async () => {
+      while (true) {
+        const myIndex = idx++;
+        if (myIndex >= batches.length) break;
+        // eslint-disable-next-line no-await-in-loop
+        await handler(batches[myIndex], myIndex);
+      }
+    })();
+    workers.push(worker);
+  }
+  await Promise.all(workers);
+}
+
 async function main() {
-  const { symbol, timeframe, since, limit, verbose, batch, maxRetries } = parseArgs();
+  const { symbol, timeframe, since, limit, verbose, batch, maxRetries, concurrency, failDumpDir } = parseArgs();
   const tfMs = timeframeToMs(timeframe);
 
   const ex = new (ccxt as any).binance({ enableRateLimit: true, timeout: 30000 });
@@ -163,7 +214,6 @@ async function main() {
   const { series } = computeTBO(o, h, l, c);
 
   // Required NOT NULL columns in your table (from your schema)
-  // symbol, timeframe, ts, speed, inserted_at, exchange, updated_at
   // We'll set sensible values for speed/inserted_at/updated_at so upserts don't hit NOT NULL violations.
   const nowIso = () => new Date().toISOString();
 
@@ -171,7 +221,6 @@ async function main() {
   const payloads: any[] = [];
   for (let i = 0; i < t.length; ++i) {
     const iso = new Date(t[i]).toISOString();
-    // Defensive: ensure ts is present and a valid ISO string
     if (!iso) {
       if (verbose) console.error(`Skipping index ${i} because timestamp is invalid:`, t[i]);
       continue;
@@ -180,14 +229,9 @@ async function main() {
     payloads.push({
       symbol,
       timeframe,
-      // ts column in your DB is NOT NULL and is timestamptz -> send ISO string
       ts: iso,
-      // canonical timestamp column used for unique index / upsert key
       timestamp: iso,
-      // speed is NOT NULL in your schema; set to timeframe to be safe (adjust if you have a different meaning)
       speed: timeframe,
-      // inserted_at/updated_at are NOT NULL in your schema; supply updated_at and inserted_at to be safe.
-      // If your DB has defaults (now()), these can be omitted — but supplying them is safe.
       inserted_at: iso,
       updated_at: nowIso(),
       open: o[i],
@@ -231,29 +275,49 @@ async function main() {
     process.exit(1);
   }
 
-  // Chunk and upsert batches sequentially (safer for rate limits)
+  // Chunk and upsert batches (with concurrency control)
   const batches = chunkArray(payloads, batch);
   let totalUpserted = 0;
   let totalFailedBatches = 0;
 
-  for (let bi = 0; bi < batches.length; bi++) {
-    const rows = batches[bi];
+  // handler for each batch (used by sequential and concurrent runner)
+  const handler = async (rows: any[], bi: number) => {
     if (verbose) console.error(`Upserting batch ${bi + 1}/${batches.length} (size=${rows.length})...`);
-    // Print a single example row for debugging when verbose
     if (verbose) console.error("Example payload row:", JSON.stringify(rows[0]));
 
     const res = await upsertBatchWithRetries("tbo_bars", rows, "symbol,timeframe,timestamp", maxRetries, verbose);
-
     if (!res.success) {
       totalFailedBatches++;
       console.error(`Batch ${bi + 1} failed permanently.`);
-      // persist failing rows locally for later replay (optional)
-      // Example (disabled): writeFileSync(`/tmp/failing-batch-${bi+1}.json`, JSON.stringify(rows, null, 2));
+      // persist failing rows for later replay
+      try {
+        dumpFailedBatch(failDumpDir!, { symbol, timeframe, batchIndex: bi + 1, attemptTime: Date.now() }, rows);
+      } catch (e) {
+        console.error("Failed to persist failing batch:", e);
+      }
     } else {
       totalUpserted += rows.length;
     }
     // small pause between batches to be polite to the DB
     await sleep(100);
+    return res;
+  };
+
+  if (concurrency > 1) {
+    if (verbose) console.error(`Running ${batches.length} batches with concurrency=${concurrency}...`);
+    await runBatchesConcurrently(batches, concurrency, handler);
+  } else {
+    // sequential
+    for (let bi = 0; bi < batches.length; bi++) {
+      // eslint-disable-next-line no-await-in-loop
+      // calling handler sequentially
+      // handler already respects retries/backoff
+      // eslint-disable-next-line no-await-in-loop
+      // small pause is inside handler
+      // so we can just await it
+      // eslint-disable-next-line no-await-in-loop
+      await handler(batches[bi], bi);
+    }
   }
 
   // Update watermark (optional)
