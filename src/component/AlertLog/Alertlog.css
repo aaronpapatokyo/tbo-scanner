@@ -1,0 +1,32 @@
+.Search-Coloumnn {
+  border: 1px solid #C2D0DE;
+  box-sizing: border-box;
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 40px;
+}
+
+input {
+  border: none;
+  appearance: none;
+  outline: none;
+  background-color: transparent;
+}
+
+.btn-hijauu {
+  background-color: #0DCAB1;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  width: 100%;
+}
+
+.title-tooltipp {
+  font-weight: 600;
+  font-size: 16px;
+  color: #121212;
+  text-align: left;
+}

@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css?family=Poppins:400,500,600,700&display=swap&subset=latin-ext');
+
+.header-title {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.Container {
+  margin: 40px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.Content-space {
+  display: flex;
+  justify-content: space-between;
+}
+
+.content-tengah {
+  text-align: center;
+  justify-content: center;
+  font-family: 'Poppins', sans-serif;
+}
+
+.Judul-title {
+  font-weight: 600;
+  font-size: 24px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.title {
+  font-weight: normal;
+  font-size: 16px;
+  line-height: 26px;
+  letter-spacing: 0.3px;
+  text-align: center;
+}
+
+.Image-error {
+  margin-top: 50px;
+  margin-bottom: 30px;
+}
+
+.Search-icon {
+  display: flex;
+  border: 1px solid #ced4da;
+  padding: 10px;
+  width: 65%;
+  border-radius: 10px;
+}
+
+.content-padding {
+  padding: 25px;
+}

@@ -1,0 +1,162 @@
+.form-space {
+  display: flex;
+}
+
+.Search-iconn {
+  display: flex;
+  border: 1px solid #ced4da;
+  padding: 10px;
+  width: 100%;
+  border-radius: 10px;
+}
+
+.select-btnn {
+  padding: 10px;
+  border-radius: 10px;
+  font-family: 'Poppins', sans-serif;
+  margin: 0px 25px;
+  width: 25%;
+  font-size: 13px;
+  height: 45px;
+}
+
+.tooltip-bodyy {
+  font-family: 'Poppins', sans-serif;
+  background-color: #FFFFFF;
+  padding: 2px 10px;
+  color: #000;
+  margin-top: 10px;
+  border-radius: 10px;
+  box-shadow: 0px 4px 80px rgba(64, 75, 78, 0.16);
+}
+
+.title-tooltip {
+  text-align: left;
+  font-weight: normal;
+  display: flex;
+}
+
+.select {
+  width: 100%;
+}
+
+.Search-icon img {
+  width: 16px;
+}
+
+th {
+  font-size: 12px;
+  color: #444;
+}
+
+td {
+  height: 35px;
+  font-size: 12px;
+}
+
+tr:nth-child(even) {
+  background: #f5f5f5;
+}
+
+tr:nth-child(odd) {
+  background: #FFF;
+}
+
+.search-table-outter {
+  overflow-x: scroll;
+}
+
+th, td {
+  text-align: left;
+  padding: 20px;
+}
+
+
+.popover .popover-arrow {
+  position: absolute;
+  display: none;
+  width: 1rem;
+  height: 0.5rem;
+}
+
+.popover-body {
+  padding: 1rem 1rem;
+  color: #212529;
+  font-family: 'Poppins';
+  font-size: 12px;
+}
+
+.Search-Kolom img {
+  margin-right: 10px;
+}
+
+.Search-Kolom {
+  border: 1px solid #C2D0DE;
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 40px;
+  display: flex;
+}
+
+.Dollar-Column {
+  border: 1px solid #C2D0DE;
+  border-radius: 10px;
+  display: flex;
+}
+
+.None {
+  display: none;
+}
+
+.Above .item1 {
+  display: block;
+}
+
+.Below .item2 {
+  display: block;
+}
+
+.Between .item3 {
+  display: block;
+}
+
+.persen {
+  display: flex;
+  border: 1px solid #C2D0DE;
+  box-sizing: border-box;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.body-persen {
+  background-color: #F5F6F8;
+  padding: 10px 15px;
+  border-radius: 0px 10px 10px 0px;
+  color: #9FA3AD;
+}
+
+.input-persen {
+  border-radius: 10px 0px 0px 10px;
+  padding: 10px;
+  width: 80%;
+
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+.popover {
+  border-radius: 15px;
+}
+
+.header-table th {
+  padding: 20px;
+  min-width: 120px;
+}
+
+.flex-th {
+  display: flex;
+  text-align: center;
+  justify-content: center;
+}

@@ -1,0 +1,22 @@
+.Search-iconn {
+  display: flex;
+  border: 1px solid #ced4da;
+  padding: 10px;
+  width: 100%;
+  border-radius: 10px;
+}
+
+.Search-Kolom img {
+  margin-right: 10px;
+  margin-left: 0px;
+
+}
+
+.flexx-th {
+  display: flex;
+  justify-content: space-between;
+}
+
+.title-left {
+  margin-left: 15px;
+}

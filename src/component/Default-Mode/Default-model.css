@@ -1,0 +1,353 @@
+@import url('https://fonts.googleapis.com/css?family=Poppins:400,500,600,700&display=swap&subset=latin-ext');
+
+.header-title {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.Container {
+  font-family: 'Poppins', sans-serif;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid #ced4da;
+  padding: 30px;
+}
+
+.Content-space {
+  display: flex;
+  justify-content: space-between;
+}
+
+.Button-space {
+  display: flex;
+
+}
+
+.content-padding {
+  padding: 25px;
+}
+
+.paddingg {
+  padding: 5px 20px;
+}
+
+.bottom-border {
+  border-bottom: 1px solid #E2E7F2;
+  padding-bottom: 20px;
+}
+
+.bottomm-border {
+  border-bottom: 1px solid #E2E7F2;
+  padding-bottom: 5px;
+}
+
+.paddinggg {
+  padding: 5px 20px;
+}
+
+.accordion {
+  font-family: 'Poppins', sans-serif;
+}
+
+.abu {
+  color: #ced4da;
+}
+
+.widthInput {
+  width: 70%;
+}
+
+.Judul-Accordion {
+  font-size: 15px;
+  font-weight: 600;
+  color: #013466;
+}
+
+.title-Acordion {
+  font-size: 13px;
+  color: #013466;
+  margin-bottom: 10px;
+}
+
+.Search-icon {
+  display: flex;
+  border: 1px solid #ced4da;
+  padding: 10px;
+  border-radius: 10px;
+  width: 65%;
+}
+
+.Search-icon.mb-3 img {
+  width: 16px;
+}
+
+.input-search {
+  border: none;
+  width: 100%;
+  outline: none;
+  appearance: none;
+  margin-left: 15px;
+  font-size: 13px;
+  font-weight: 400;
+  background-color: transparent;
+}
+
+.button-link {
+  color: #0DCAB1;
+  background-color: transparent;
+  border: none;
+  outline: none;
+  appearance: none;
+  margin: 10px 15px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tab {
+  margin: 0px;
+}
+
+.btn-hijau {
+  background-color: #0DCAB1;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  margin: 0px 5px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.card {
+  background: #F5F6F8;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.select {
+  border: 1px solid #C2D0DE;
+  box-sizing: border-box;
+  border-radius: 10px;
+  font-size: 13px;
+  padding: 10px;
+}
+
+.form-selected {
+  width: 30%;
+  font-size: 13px;
+}
+
+.form-selected-two {
+  width: 40%;
+  display: flex;
+}
+
+.title-center {
+  margin-top: 10px;
+  margin-left: 10px;
+  margin-right: 10px;
+  font-size: 13px;
+}
+
+.label {
+  background-color: rgb(25 112 178 / 15%);
+  border-radius: 10px;
+  margin: 0px 5px;
+  width: 50%;
+}
+
+.active-blue {
+  background-color: rgb(25 112 178 / 15%);
+  border-radius: 10px;
+  margin: 0px 5px;
+  width: 70px;
+  height: 40px;
+  outline: none;
+  border: none;
+  color: #1970B2;
+  font-family: 'Poppins';
+  font-size: 13px;
+}
+
+.css-1h9z7r5-MuiButtonBase-root-MuiTab-root.Mui-selected {
+  color: #1976d2;
+  font-weight: 600;
+}
+
+.accordion-item {
+  background: #F5F6F8;
+}
+
+
+.form-selected-three {
+  width: 30%;
+  display: flex;
+}
+
+.form-check-input {
+  width: 24px;
+  height: 24px;
+}
+
+.form-check-label {
+  margin: 5px;
+  margin-left: 10px;
+}
+
+.form-selected-space {
+  width: 46%;
+  font-size: 13px;
+}
+
+.title-Acordionn {
+  font-size: 13px;
+  color: #013466;
+  margin-top: 10px;
+}
+
+.form-selected-space-two {
+  width: 25%;
+  font-size: 13px;
+}
+
+.form-selected-space-three {
+  width: 25%;
+  font-size: 13px;
+}
+
+.accordion-button:not(.collapsed) {
+  color: #0c63e4;
+  background-color: #fff;
+  box-shadow: inset 0 -1px 0 rgb(0 0 0 / 13%);
+}
+
+.PrivateTabIndicator-colorSecondary-3 {
+  background-color: #1970B2;
+}
+
+.category {
+  font-family: 'Poppins', sans-serif;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #1970B2;
+}
+
+.form-select {
+  background-image: none;
+}
+
+.select-icon {
+  display: flex;
+  border: 1px solid #ced4da;
+  padding: 10px;
+  border-radius: 10px;
+  background-color: #fff;
+}
+
+.select-option {
+  border: none;
+  width: 165px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  font-size: 13px;
+  font-weight: 400;
+  background-color: transparent;
+  cursor: pointer;
+  position: absolute;
+}
+
+.accordion-button::after {
+  display: none;
+}
+
+.form-check-input {
+  cursor: pointer;
+}
+
+.light-mode-side .accordion-item:first-of-type .accordion-button {
+  background: #F5F6F8;
+  border-bottom: 1px solid #E2E7F2;
+  justify-content: space-between;
+  box-shadow: none;
+}
+
+.dark-mode-side .accordion-item:first-of-type .accordion-button {
+  background: #2E323D;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  justify-content: space-between;
+
+}
+
+.dark-mode-side .bottom-border {
+  border-bottom: 1px solid hsla(0, 0%, 100%, .2);
+}
+
+.dark-mode-side .bottomm-border {
+  border-bottom: 1px solid hsla(0, 0%, 100%, .2);
+}
+
+.dark-mode-side .active-blue {
+  color: #fff;
+}
+
+.dark-mode-side .Judul-Accordion {
+  color: #fff;
+}
+
+.light-mode-side .title-Acordionn {
+  color: #212529;
+}
+
+.dark-mode-side .title-Acordionn {
+  color: #fff;
+}
+
+.dark-mode-side .label {
+  background-color: #444A5B;
+}
+
+.light-mode-side .form-check-label {
+  color: #212529;
+}
+
+.dark-mode-side .select.form-select {
+  background: rgba(68, 74, 91, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ced4da;
+}
+
+.dark-mode-side .select.form-control {
+  background: rgba(68, 74, 91, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ced4da;
+}
+
+.dark-mode-side .accordion-item {
+  background: #2E323D;
+}
+
+.dark-mode-side .form-check-label {
+  color: #fff;
+}
+
+.dark-mode-side .select-icon {
+  background-color: rgba(68, 74, 91, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ced4da;
+}
+
+.dark-mode-side .select-option {
+  color: #ced4da;
+}
+
+.dark-mode-side .header {
+  border-bottom: 1px solid #505259;
+}

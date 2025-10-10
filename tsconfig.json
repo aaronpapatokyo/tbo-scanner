@@ -13,5 +13,5 @@
       "@lib/*": ["src/lib/*"]
     }
   },
-  "include": ["src", "scripts"]
+  "include": ["src", "scripts", "src/lib"]
 }
