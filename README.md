@@ -1,58 +1,70 @@
-# TBO Scanner (Starter)
+# Getting Started with Create React App
 
-This repo contains:
-- TypeScript port of the TBO indicator (from your Pine Script)
-- Technical Analysis utilities (EMA, SMA, RSI, Bollinger Bands)
-- A CLI script to fetch Binance spot OHLCV with CCXT and compute TBO signals for validation
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-Next steps (planned in follow-up PRs):
-- Supabase schema and ingestion jobs
-- Next.js app with a scanner UI and filters for TBO signals
+## Available Scripts
 
-## Prerequisites
-- Node.js 18+
-- pnpm or npm
+In the project directory, you can run:
 
-## Setup
-1. Copy `.env.example` to `.env`
-2. Install deps
-   - `pnpm install` (or `npm install`)
-3. Run a quick test:
-   - `pnpm run tbo --symbol=BTC/USDT --timeframe=1h --since=2024-01-01`
+### `npm start`
 
-This prints the latest computed TBO signals and key series values.
+Runs the app in the development mode.\
+Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
-## Example
-```bash
-pnpm run tbo --symbol=ETH/USDT --timeframe=4h --limit=1000
-```
+The page will reload if you make edits.\
+You will also see any lint errors in the console.
 
-Use TradingView with the same symbol/timeframe and compare signals visually. If anything looks off, please share a screenshot/time index and we’ll adjust.
+### `npm test`
 
-## Notes on Parity
-- The port preserves the Pine logic, including the exact TBO speeds, confirmation bars, and breakout/breakdown logic (including the MA_increasing/MA_decreasing behavior as written).
-- Breakout method default is 'XL' as in the script.
-- Support/Resistance use the same RSI thresholds (35/65) and last-crossover logic.
+Launches the test runner in the interactive watch mode.\
+See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-## Roadmap
-- PR 1 (this): Indicator + CLI validator
-- PR 2: Supabase schema + ingestion (CCXT batch for Binance USDT spot + timeframes: 5m, 30m, 1h, 4h, 1d, 1w)
-- PR 3: Next.js scanner UI, filters for: Open Long, Open Short, Close Long, Close Short, Cross Up, Cross Down, Breakout, Breakdown, Resistance, Support, TBO Fast/Mid Fast/Mid Slow/Slow lines
-- PR 4: Deploy to Vercel + Vercel Cron + expansion to more pairs
+### `npm run build`
 
-## Attribution
-- TBO Pine Script © thebettertraders by kaio (https://github.com/kaiomp) under the Mozilla Public License 2.0. This repository includes a TypeScript port of the indicator logic with attribution per MPL 2.0 
+Builds the app for production to the `build` folder.\
+It correctly bundles React in production mode and optimizes the build for the best performance.
 
-## Inspect a specific bar (new)
-Use `--at=YYYY-MM-DD` (UTC) and the CLI will fetch a warmup window and print the signals for that exact bar.
+The build is minified and the filenames include the hashes.\
+Your app is ready to be deployed!
 
-Examples:
-```bash
-# BTC/USDT daily — 2025-09-16 (with 400 warmup bars)
-npm run tbo -- --symbol=BTC/USDT --timeframe=1d --at=2025-09-16 --warmup=400
+See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-# ETH/USDT daily — 2023-11-21 (default warmup 400)
-npm run tbo -- --symbol=ETH/USDT --timeframe=1d --at=2023-11-21
-```
+### `npm run eject`
 
-Tip: Set TradingView’s timezone to UTC and ensure you’re on Binance spot (BTCUSDT) to match candles.
+**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+
+If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+
+Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+
+You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+
+## Learn More
+
+You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+
+To learn React, check out the [React documentation](https://reactjs.org/).
+
+### Code Splitting
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+
+### Analyzing the Bundle Size
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+
+### Making a Progressive Web App
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+
+### Advanced Configuration
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+
+### Deployment
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+
+### `npm run build` fails to minify
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
