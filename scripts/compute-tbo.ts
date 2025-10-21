@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 import ccxt from "ccxt";
-import { computeTBO, TBOSpeed } from "../src/lib/tbo";
+import { computeTBO, TBOSpeed } from "../src/tbo";
 
 type Args = {
   symbol: string;

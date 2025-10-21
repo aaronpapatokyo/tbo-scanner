@@ -1,9 +1,14 @@
-const ccxt = require('ccxt');
-const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
-console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
-console.log('SUPABASE_KEY:', process.env.SUPABASE_KEY ? '[found]' : '[missing]');
+const ccxt = require('ccxt');
+const { createClient } = require('@supabase/supabase-js');
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+// Debug print (optional)
+console.log('SUPABASE_URL:', SUPABASE_URL);
+console.log('SUPABASE_KEY:', SUPABASE_KEY ? '[found]' : '[missing]');
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error("SUPABASE_URL and SUPABASE_KEY must be set in your .env file");
@@ -11,10 +16,10 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 }
 
 // Config
-const EXCHANGE = 'binance'; // or any ccxt-supported exchange
-const SYMBOL = 'BTC/USDT';  // Change as desired
-const TIMEFRAME = '1h';     // '1d', '5m', etc.
-const LIMIT = 100;          // Number of bars to fetch (max 1000 for Binance)
+const EXCHANGE = 'binance';
+const SYMBOL = 'BTC/USDT';
+const TIMEFRAME = '1h';
+const LIMIT = 100;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -36,7 +41,6 @@ async function main() {
         low,
         close,
         volume
-        // Add other columns here as needed!
       }]);
     if (error) {
       console.error('Supabase upsert error:', error);
