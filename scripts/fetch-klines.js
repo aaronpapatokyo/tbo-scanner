@@ -1,9 +1,14 @@
+require('dotenv').config();
 const ccxt = require('ccxt');
 const { createClient } = require('@supabase/supabase-js');
 
-// TODO: Replace with your own Supabase credentials
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://xuatwcayvmymqfhmxdcx.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1YXR3Y2F5dm15bXFmaG14ZGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyNjMwNDAsImV4cCI6MjA3MzgzOTA0MH0.ARB9M0gygiBde5euHnN7KFOX3PrJsonD3RdkneNFR7I';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('SUPABASE_URL and SUPABASE_KEY must be set in your .env file');
+  process.exit(1);
+}
 
 // Example config
 const EXCHANGE = 'binance';
@@ -20,7 +25,7 @@ async function main() {
   // Each ohlcv entry: [timestamp, open, high, low, close, volume]
   for (const [ts, open, high, low, close, volume] of ohlcv) {
     const { error } = await supabase
-      .from('tbo_bars') // <-- your table name
+      .from('tbo_bars')
       .upsert([{
         symbol: SYMBOL,
         timeframe: TIMEFRAME,
@@ -31,7 +36,6 @@ async function main() {
         close,
         volume
       }]);
-
     if (error) {
       console.error('Supabase upsert error:', error);
     }

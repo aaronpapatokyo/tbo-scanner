@@ -2,8 +2,8 @@ const ccxt = require('ccxt');
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+console.log('SUPABASE_KEY:', process.env.SUPABASE_KEY ? '[found]' : '[missing]');
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error("SUPABASE_URL and SUPABASE_KEY must be set in your .env file");
