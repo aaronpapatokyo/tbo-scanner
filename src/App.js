@@ -54,6 +54,8 @@ import user from './assets/icons/user.svg';
 import vektor from './assets/icons/Vector-white.svg';
 import VektorBlack from './assets/icons/Vector.svg';
 
+import KlineTable from './component/KlineTable/Index';
+
 // const plainOptions = ['Apple', 'Pear', 'Orange'];
 function onChange(e) {
   // console.log(`radio checked:${e.target.value}`);
@@ -247,7 +249,6 @@ function App() {
 
   return (
     <Router>
-      <div className='Bg-Color'>
         <div style={{ display: "flex", minHeight: '100vh' }} className={darkMode ? "dark-mode-side" : "light-mode-side"}>
           <div className='Sidebar ' >
             <Link to="/">
@@ -936,22 +937,22 @@ function App() {
               </Modal>
 
             </div>
-            <Switch>
-              {routes.map((route, index) => (
-                <Route
-                  key={index}
-                  path={route.path}
-                  exact={route.exact}
-                />
-              ))}
-            </Switch>
           </div>
           <div className='Menuitem' style={{
             backgroundColor: darkMode ? "#242730" : "#fff",
             color: darkMode && "#F5F6F8",
           }}>
             <Switch>
-              <div>
+              {routes.map((route, index) => (
+                <Route
+                  key={index}
+                  path={route.path}
+                  exact={route.exact}
+                  children={<route.main />}
+                />
+              ))}
+            </Switch>
+            <div>
                 <div className='header mt-2'>
                   <div className="header-title">
                     Better Crypto Scanner Pro
@@ -1435,10 +1436,11 @@ function App() {
                     <Tab eventKey="Alert Log" title="Alert Log" >
                       <AlertLog />
                     </Tab>
-                  </Tabs>
-                </div>
-              </div>
-            </Switch>
+                     <Tab eventKey="Klines" title="Klines">
+                <KlineTable />
+              </Tab>
+              </Tabs>
+            </div>
           </div>
         </div>
       </div>
