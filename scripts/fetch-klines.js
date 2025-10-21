@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 // TODO: Replace with your own Supabase credentials
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://xuatwcayvmymqfhmxdcx.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || 'sb_secret_tlXe7rw9Sd4X6DUUleADVA_HPs4BCgM';
+const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1YXR3Y2F5dm15bXFmaG14ZGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgyNjMwNDAsImV4cCI6MjA3MzgzOTA0MH0.ARB9M0gygiBde5euHnN7KFOX3PrJsonD3RdkneNFR7I';
 
 // Example config
 const EXCHANGE = 'binance';
